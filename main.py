@@ -31,6 +31,7 @@ CHUNKS = 100 * MAX_WORKERS
 scraped_count = 0
 start_time = timeit.default_timer()
 total_urls = 0  # This will be set after reading the CSV
+starting_index = 0
 
 # Random headers to mimic a real browser
 headers_list: List[dict[str, str]] = [
@@ -72,7 +73,7 @@ def scrape_urls(data: List[Tuple[int, str]]) -> str:
         book_id, url = row
         try:
             headers = random.choice(headers_list)
-            time.sleep(random.uniform(1, 4))
+            time.sleep(random.uniform(1, 10))
             response = requests.get(url, headers=headers)
             response.raise_for_status()
 
@@ -176,6 +177,7 @@ def read_id_url_pairs_from_csv(file_path: str = 'bad_descriptions.csv') -> List[
         List[List[Tuple[int, str]]]: List of book ID and URL pairs.
     """
     global total_urls
+    global starting_index
 
     id_url_pairs = []
     with open(file_path, 'r', newline='', encoding='utf-8') as file:
@@ -187,7 +189,7 @@ def read_id_url_pairs_from_csv(file_path: str = 'bad_descriptions.csv') -> List[
                 logging.error(f"Error reading row {row}: ID must be an integer")
             except IndexError:
                 logging.error(f"Error reading row {row}: Row must have at least two columns")
-
+    id_url_pairs = id_url_pairs[starting_index:]
     logging.info(f"Read {len(id_url_pairs)} ID-URL pairs from CSV")
     total_urls = len(id_url_pairs)
 
@@ -199,6 +201,7 @@ def get_args():
     parser.add_argument('file_path', type=str, help='Path to the CSV file containing book ID and URL pairs.')
     parser.add_argument('--max_workers', type=int, default=16,
                         help='Number of workers for ThreadPoolExecutor. Defaults to 16.')
+    parser.add_argument('--starting_index', type=int, default=0)
     return parser.parse_args()
 
 
@@ -229,6 +232,7 @@ if __name__ == "__main__":
     args = get_args()
     file_path = args.file_path if args.file_path else 'bad_descriptions_138.csv'
     max_workers = args.max_workers
+    starting_index = args.starting_index
 
     logging.info("Starting scraping")
     start = timeit.default_timer()
